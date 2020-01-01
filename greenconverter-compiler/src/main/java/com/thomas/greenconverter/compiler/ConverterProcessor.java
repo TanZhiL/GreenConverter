@@ -14,6 +14,7 @@ import com.thomas.greenconverter.ListConverter;
 import org.greenrobot.greendao.converter.PropertyConverter;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -70,6 +71,7 @@ public class ConverterProcessor extends AbstractProcessor {
         }
     }
  */
+        List<TypeSpec> typeSpecs = new ArrayList<>();
         Set<? extends Element> okAspectjElements = roundEnv.getElementsAnnotatedWith(Converter.class);
         for (Element element : okAspectjElements) {
             TypeElement classElement = (TypeElement) element;
@@ -80,7 +82,7 @@ public class ConverterProcessor extends AbstractProcessor {
                     .addAnnotation(Override.class)
                     .addParameter(ClassName.get(String.class), "databaseValue")
                     .returns(TypeName.get(classElement.asType()))
-                    .addStatement("return new $T().fromJson(databaseValue,"+String.format("%s.class",classElement.getSimpleName())+")", Gson.class)
+                    .addStatement("return new $T().fromJson(databaseValue," + String.format("%s.class", classElement.getSimpleName()) + ")", Gson.class)
                     .build();
 
 
@@ -93,24 +95,16 @@ public class ConverterProcessor extends AbstractProcessor {
                     .build();
 
 
-            ParameterizedTypeName typeName = ParameterizedTypeName.get(ClassName.get("org.greenrobot.greendao.converter", "PropertyConverter"),TypeName.get(classElement.asType()),ClassName.get(String.class));
-            TypeSpec OkAspectj = TypeSpec.classBuilder("Converter")
+            ParameterizedTypeName typeName = ParameterizedTypeName.get(ClassName.get("org.greenrobot.greendao.converter", "PropertyConverter"), TypeName.get(classElement.asType()), ClassName.get(String.class));
+            TypeSpec OkAspectj = TypeSpec.classBuilder(classElement.getSimpleName().toString() + "_Converter")
                     .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                     .addSuperinterface(typeName)
                     .addMethod(convertToEntityProperty)
                     .addMethod(convertToDatabaseValue)
                     .build();
 
-            TypeSpec wrapper = TypeSpec.classBuilder(classElement.getSimpleName().toString() + "_Converter")
-                    .addModifiers(Modifier.PUBLIC,Modifier.FINAL)
-                    .addType(OkAspectj)
-                    .build();
-            JavaFile javaFile = JavaFile.builder(packageElement.getQualifiedName().toString(), wrapper).build();
-            try {
-                javaFile.writeTo(mFiler);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            typeSpecs.add(OkAspectj);
+
         }
         okAspectjElements = roundEnv.getElementsAnnotatedWith(ListConverter.class);
 /*
@@ -149,7 +143,7 @@ public class ConverterProcessor extends AbstractProcessor {
                     .addCode("  if (databaseValue.length()==0) {\n" +
                             "                return $T.emptyList();\n" +
                             "            }", Collections.class)
-                    .addCode("$T<$T> typeToken = new $T<$T>(){};", TypeToken.class,list,TypeToken.class,list)
+                    .addCode("$T<$T> typeToken = new $T<$T>(){};", TypeToken.class, list, TypeToken.class, list)
                     .addStatement("return new $T().fromJson(databaseValue,typeToken.getType())", Gson.class)
                     .build();
 
@@ -168,26 +162,29 @@ public class ConverterProcessor extends AbstractProcessor {
                     .build();
 
 
-            ParameterizedTypeName typeName = ParameterizedTypeName.get(ClassName.get("org.greenrobot.greendao.converter", "PropertyConverter"),list,ClassName.get(String.class));
-            TypeSpec OkAspectj = TypeSpec.classBuilder("ListConverter")
+            ParameterizedTypeName typeName = ParameterizedTypeName.get(ClassName.get("org.greenrobot.greendao.converter", "PropertyConverter"), list, ClassName.get(String.class));
+            TypeSpec OkAspectj = TypeSpec.classBuilder(classElement.getSimpleName().toString() + "_ListConverter")
                     .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                     .addSuperinterface(typeName)
                     .addMethod(convertToEntityProperty)
                     .addMethod(convertToDatabaseValue)
                     .build();
-            TypeSpec wrapper = TypeSpec.classBuilder(classElement.getSimpleName().toString() + "_ListConverter")
-                    .addModifiers(Modifier.PUBLIC,Modifier.FINAL)
-                    .addType(OkAspectj)
-                    .build();
-
-            JavaFile javaFile = JavaFile.builder(packageElement.getQualifiedName().toString(), wrapper).build();
-            try {
-                javaFile.writeTo(mFiler);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            typeSpecs.add(OkAspectj);
         }
-
+        TypeSpec.Builder greenConverter = TypeSpec.classBuilder("GreenConverter")
+                .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+        for (TypeSpec typeSpec : typeSpecs) {
+            greenConverter.addType(typeSpec);
+        }
+        if(typeSpecs.size()==0){
+            return true;
+        }
+        JavaFile javaFile = JavaFile.builder("com.thomas", greenConverter.build()).build();
+        try {
+            javaFile.writeTo(mFiler);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         return true;
     }
 

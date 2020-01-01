@@ -19,9 +19,9 @@ import org.greenrobot.greendao.annotation.Generated;
 public class UserEntity {
     @Id(autoincrement = true)
     private long id;
-    @Convert(columnType = String.class,converter = com.thomas.greenconverter.User_Converter.Converter.class)
+    @Convert(columnType = String.class,converter = com.thomas.GreenConverter.User_Converter.class)
     private User mUser;
-    @Convert(columnType = String.class,converter =com.thomas.greenconverter.User_ListConverter.ListConverter.class)
+    @Convert(columnType = String.class,converter =com.thomas.GreenConverter.User_ListConverter.class)
     private List<User> mUsers;
 
 
