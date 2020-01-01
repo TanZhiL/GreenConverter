@@ -1,0 +1,14 @@
+apply plugin: 'java-library'
+apply plugin: 'com.github.dcendents.android-maven'
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'org.greenrobot:greendao:3.2.2'
+    implementation 'com.squareup:javapoet:1.9.0'
+    implementation 'com.google.code.gson:gson:2.8.6'
+    implementation project(path: ':greenconverter')
+}
+tasks.withType(JavaCompile){
+    options.encoding='UTF-8'
+}
+sourceCompatibility = "7"
+targetCompatibility = "7"
